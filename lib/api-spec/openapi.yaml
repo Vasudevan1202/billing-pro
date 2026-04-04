@@ -3,20 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Restaurant Billing API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: menu
+    description: Menu item operations
+  - name: orders
+    description: Order operations
+  - name: analytics
+    description: Sales analytics
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +29,231 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /menu:
+    get:
+      operationId: listMenuItems
+      tags: [menu]
+      summary: List all menu items
+      responses:
+        "200":
+          description: List of menu items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItem"
+    post:
+      operationId: createMenuItem
+      tags: [menu]
+      summary: Create a new menu item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMenuItemBody"
+      responses:
+        "201":
+          description: Created menu item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+
+  /menu/{id}:
+    get:
+      operationId: getMenuItem
+      tags: [menu]
+      summary: Get a menu item by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Menu item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateMenuItem
+      tags: [menu]
+      summary: Update a menu item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMenuItemBody"
+      responses:
+        "200":
+          description: Updated menu item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteMenuItem
+      tags: [menu]
+      summary: Delete a menu item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create a new order (checkout)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "201":
+          description: Created order with invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      tags: [analytics]
+      summary: Get sales analytics summary
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, all]
+            default: month
+      responses:
+        "200":
+          description: Analytics summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+
+  /analytics/top-items:
+    get:
+      operationId: getTopItems
+      tags: [analytics]
+      summary: Get top-selling menu items
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, all]
+            default: month
+      responses:
+        "200":
+          description: Top selling items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopItem"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +264,167 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    MenuItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+        imageUrl:
+          type: string
+        available:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - price
+        - category
+        - imageUrl
+        - available
+        - createdAt
+
+    CreateMenuItemBody:
+      type: object
+      properties:
+        name:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+        imageUrl:
+          type: string
+        available:
+          type: boolean
+      required:
+        - name
+        - price
+        - category
+        - imageUrl
+
+    OrderItem:
+      type: object
+      properties:
+        menuItemId:
+          type: integer
+        menuItemName:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        subtotal:
+          type: number
+      required:
+        - menuItemId
+        - menuItemName
+        - quantity
+        - unitPrice
+        - subtotal
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        orderNumber:
+          type: string
+        totalAmount:
+          type: number
+        paymentMethod:
+          type: string
+        status:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        createdAt:
+          type: string
+      required:
+        - id
+        - orderNumber
+        - totalAmount
+        - paymentMethod
+        - status
+        - items
+        - createdAt
+
+    CreateOrderBody:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              menuItemId:
+                type: integer
+              quantity:
+                type: integer
+            required:
+              - menuItemId
+              - quantity
+        paymentMethod:
+          type: string
+          enum: [cash, upi, card]
+      required:
+        - items
+        - paymentMethod
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+        totalOrders:
+          type: integer
+        averageOrderValue:
+          type: number
+        period:
+          type: string
+      required:
+        - totalRevenue
+        - totalOrders
+        - averageOrderValue
+        - period
+
+    TopItem:
+      type: object
+      properties:
+        menuItemId:
+          type: integer
+        menuItemName:
+          type: string
+        totalQuantity:
+          type: integer
+        totalRevenue:
+          type: number
+      required:
+        - menuItemId
+        - menuItemName
+        - totalQuantity
+        - totalRevenue

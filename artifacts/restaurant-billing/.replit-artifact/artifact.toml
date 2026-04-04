@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Restaurant Billing"
+version = "1.0.0"
+id = "artifacts/restaurant-billing"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22622
+
+[services.development]
+run = "pnpm --filter @workspace/restaurant-billing run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/restaurant-billing", "run", "build" ]
+publicDir = "artifacts/restaurant-billing/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22622"
+BASE_PATH = "/"
