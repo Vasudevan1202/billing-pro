@@ -61,7 +61,7 @@ export default function BillingPage() {
     );
   };
 
-  const upiQRValue = `upi://pay?pa=restaurant@upi&pn=Udupi%20Restaurant&am=${cartTotal.toFixed(2)}&cu=INR`;
+  const upiQRValue = `upi://pay?pa=restaurant@upi&pn=MDS%20Billing&am=${cartTotal.toFixed(2)}&cu=INR`;
 
   if (confirmedOrder) {
     return (
@@ -108,7 +108,7 @@ export default function BillingPage() {
 
             <div className="text-center text-xs text-muted-foreground mb-6 print:block">
               <p>Thank you for dining with us!</p>
-              <p>Udupi Restaurant</p>
+              <p>MDS Billing &mdash; &copy; Vasu</p>
             </div>
 
             <div className="flex gap-3 print:hidden">

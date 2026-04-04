@@ -22,7 +22,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
             <Coffee className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-lg text-foreground">Udupi Billing</span>
+          <span className="font-bold text-lg text-foreground">MDS Billing</span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -62,7 +62,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/20">
             <Coffee className="w-6 h-6 text-white" />
           </div>
-          <span className="font-bold text-xl text-foreground">Udupi POS</span>
+          <span className="font-bold text-xl text-foreground">MDS Billing</span>
         </div>
         
         <nav className="flex-1 px-4 py-2 flex flex-col gap-2">
@@ -85,6 +85,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        <div className="px-6 py-4 border-t">
+          <p className="text-xs text-muted-foreground text-center">&copy; Vasu</p>
+        </div>
       </div>
 
       {/* Main Content Area */}
