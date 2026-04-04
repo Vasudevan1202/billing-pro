@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useListMenuItems, useCreateMenuItem, useUpdateMenuItem, useDeleteMenuItem, getListMenuItemsQueryKey } from "@workspace/api-client-react";
 import type { MenuItem } from "@workspace/api-client-react";
-import { Plus, Pencil, Trash2, X, Check, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Check, ToggleLeft, ToggleRight, Smartphone, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -22,6 +22,11 @@ const emptyForm: FormData = {
   available: true,
 };
 
+interface UpiSettings {
+  upiId: string;
+  name: string;
+}
+
 export default function AdminPage() {
   const { data: menuItems, isLoading } = useListMenuItems();
   const createMenuItem = useCreateMenuItem();
@@ -34,6 +39,51 @@ export default function AdminPage() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  // UPI Settings state
+  const [upiSettings, setUpiSettings] = useState<UpiSettings>({ upiId: "", name: "" });
+  const [upiSaving, setUpiSaving] = useState(false);
+  const [upiStatus, setUpiStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [upiError, setUpiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((data: UpiSettings) => setUpiSettings(data))
+      .catch(() => {});
+  }, []);
+
+  const handleUpiSave = async () => {
+    setUpiError(null);
+    if (!upiSettings.upiId.includes("@")) {
+      setUpiError("UPI ID must include '@' — e.g. yourname@okaxis");
+      return;
+    }
+    if (!upiSettings.name.trim()) {
+      setUpiError("Display name is required");
+      return;
+    }
+    setUpiSaving(true);
+    setUpiStatus(null);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ upiId: upiSettings.upiId.trim(), name: upiSettings.name.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setUpiStatus({ type: "error", message: data.error ?? "Failed to save" });
+      } else {
+        setUpiStatus({ type: "success", message: "UPI settings saved successfully" });
+        setTimeout(() => setUpiStatus(null), 3000);
+      }
+    } catch {
+      setUpiStatus({ type: "error", message: "Network error — please try again" });
+    } finally {
+      setUpiSaving(false);
+    }
+  };
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListMenuItemsQueryKey() });
@@ -93,107 +143,174 @@ export default function AdminPage() {
   const categories = Array.from(new Set(menuItems?.map((m) => m.category) ?? []));
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Menu Management</h1>
-        <Button onClick={openAdd} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Item
-        </Button>
+    <div className="p-4 max-w-5xl mx-auto space-y-8">
+
+      {/* UPI Payment Settings */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Smartphone className="w-5 h-5 text-primary" />
+          <h2 className="text-xl font-bold text-gray-900">UPI Payment Settings</h2>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <p className="text-sm text-muted-foreground mb-5">
+            Enter your UPI ID so customers can scan and pay directly. This is used for UPI QR code generation during checkout.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1">
+                UPI ID <span className="text-muted-foreground font-normal">(e.g. yourname@okaxis)</span>
+              </label>
+              <Input
+                value={upiSettings.upiId}
+                onChange={(e) => {
+                  setUpiSettings({ ...upiSettings, upiId: e.target.value });
+                  setUpiError(null);
+                }}
+                placeholder="yourname@okaxis"
+                className={upiError && !upiSettings.upiId.includes("@") ? "border-destructive" : ""}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1">
+                Display Name <span className="text-muted-foreground font-normal">(shown on QR scanner)</span>
+              </label>
+              <Input
+                value={upiSettings.name}
+                onChange={(e) => {
+                  setUpiSettings({ ...upiSettings, name: e.target.value });
+                  setUpiError(null);
+                }}
+                placeholder="MDS Billing"
+              />
+            </div>
+          </div>
+
+          {upiError && (
+            <p className="text-sm text-destructive mb-3">{upiError}</p>
+          )}
+
+          {upiStatus && (
+            <div className={`text-sm px-4 py-2 rounded-lg mb-3 ${
+              upiStatus.type === "success"
+                ? "bg-green-50 text-green-700 border border-green-200"
+                : "bg-red-50 text-red-700 border border-red-200"
+            }`}>
+              {upiStatus.message}
+            </div>
+          )}
+
+          <Button onClick={handleUpiSave} disabled={upiSaving} className="gap-2">
+            <Save className="w-4 h-4" />
+            {upiSaving ? "Saving..." : "Save UPI Settings"}
+          </Button>
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl h-20 animate-pulse" />
-          ))}
+      {/* Menu Management */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Menu Management</h2>
+          <Button onClick={openAdd} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Item
+          </Button>
         </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Item</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden sm:table-cell">Category</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Price</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden md:table-cell">Status</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {menuItems?.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-10 h-10 rounded-lg object-cover bg-gray-100"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://placehold.co/40x40/f97316/ffffff?text=${item.name[0]}`;
-                          }}
-                        />
-                        <span className="font-semibold text-gray-900">{item.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className="text-xs bg-orange-50 text-orange-700 px-2 py-1 rounded-full font-medium">
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold text-primary">₹{item.price}</span>
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      {item.available ? (
-                        <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full font-medium">Available</span>
-                      ) : (
-                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">Unavailable</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openEdit(item)}
-                          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary hover:text-primary transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        {deleteConfirm === item.id ? (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              className="w-8 h-8 rounded-lg bg-destructive text-white flex items-center justify-center hover:opacity-90"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm(null)}
-                              className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setDeleteConfirm(item.id)}
-                            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:border-destructive hover:text-destructive transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
-      {/* Add/Edit Modal */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-xl h-20 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Item</th>
+                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden sm:table-cell">Category</th>
+                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Price</th>
+                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden md:table-cell">Status</th>
+                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {menuItems?.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-10 h-10 rounded-lg object-cover bg-gray-100"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = `https://placehold.co/40x40/f97316/ffffff?text=${item.name[0]}`;
+                            }}
+                          />
+                          <span className="font-semibold text-gray-900">{item.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <span className="text-xs bg-orange-50 text-orange-700 px-2 py-1 rounded-full font-medium">
+                          {item.category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-bold text-primary">₹{item.price}</span>
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        {item.available ? (
+                          <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full font-medium">Available</span>
+                        ) : (
+                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">Unavailable</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEdit(item)}
+                            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary hover:text-primary transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          {deleteConfirm === item.id ? (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handleDelete(item.id)}
+                                className="w-8 h-8 rounded-lg bg-destructive text-white flex items-center justify-center hover:opacity-90"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirm(null)}
+                                className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setDeleteConfirm(item.id)}
+                              className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:border-destructive hover:text-destructive transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add/Edit Menu Item Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
