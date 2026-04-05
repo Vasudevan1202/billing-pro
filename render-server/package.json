@@ -1,0 +1,17 @@
+{
+  "name": "mds-billing-upi-server",
+  "version": "1.0.0",
+  "description": "UPI QR code generation API for MDS Billing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "qrcode": "^1.5.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
