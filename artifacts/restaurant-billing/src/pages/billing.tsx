@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Minus, Plus, Trash2, ShoppingCart, X, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -6,7 +6,6 @@ import { useListMenuItems, useCreateOrder, getListOrdersQueryKey, getGetAnalytic
 import type { MenuItem } from "@workspace/api-client-react";
 import { useCart } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 type PaymentMethod = "cash" | "upi" | "card";
 
@@ -19,6 +18,11 @@ interface ConfirmedOrder {
   createdAt: string;
 }
 
+interface UpiSettings {
+  upiId: string;
+  name: string;
+}
+
 export default function BillingPage() {
   const { data: menuItems, isLoading } = useListMenuItems();
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal } = useCart();
@@ -29,6 +33,17 @@ export default function BillingPage() {
   const [confirmedOrder, setConfirmedOrder] = useState<ConfirmedOrder | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [showMobileCart, setShowMobileCart] = useState(false);
+
+  const [upiSettings, setUpiSettings] = useState<UpiSettings>({ upiId: "restaurant@upi", name: "MDS Billing" });
+
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((data: UpiSettings) => {
+        if (data.upiId) setUpiSettings(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const categories = ["All", ...Array.from(new Set(menuItems?.map((m) => m.category) ?? []))];
   const filteredItems = menuItems?.filter(
@@ -61,7 +76,8 @@ export default function BillingPage() {
     );
   };
 
-  const upiQRValue = `upi://pay?pa=restaurant@upi&pn=MDS%20Billing&am=${cartTotal.toFixed(2)}&cu=INR`;
+  // UPI payment link using admin-configured UPI ID and cart total
+  const upiQRValue = `upi://pay?pa=${encodeURIComponent(upiSettings.upiId)}&pn=${encodeURIComponent(upiSettings.name)}&am=${cartTotal.toFixed(2)}&cu=INR`;
 
   if (confirmedOrder) {
     return (
@@ -284,7 +300,7 @@ export default function BillingPage() {
                 <div className="p-3 bg-gray-50 rounded-xl border">
                   <QRCodeSVG value={upiQRValue} size={160} />
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">UPI ID: restaurant@upi</p>
+                <p className="text-xs text-muted-foreground mt-2 font-mono">{upiSettings.upiId}</p>
               </div>
             )}
 
